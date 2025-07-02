@@ -1,7 +1,5 @@
-# Version minimale pour tester
+# .github/workflows/sync-dev-branches.yml
 name: Sync Dev Branches on PR Merge
-permissions:
-  contents: write
 
 on:
   pull_request:
@@ -14,8 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -24,8 +24,52 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-      - name: Test sync
+      - name: Sync dev branches
         run: |
           git fetch origin
-          echo "Branches dev disponibles:"
-          git branch -r | grep 'origin/dev/' || echo "Aucune branche dev trouvée"
+          
+          # Récupère les branches dev/*
+          DEV_BRANCHES=$(git branch -r | grep 'origin/dev/' | grep -v HEAD | sed 's/origin\///' | xargs)
+          
+          if [ -z "$DEV_BRANCHES" ]; then
+            echo "ℹ️ Aucune branche dev/* à synchroniser"
+            exit 0
+          fi
+          
+          echo "🔄 Branches à synchroniser: $DEV_BRANCHES"
+          
+          SYNC_SUCCESS=0
+          SYNC_FAILED=0
+          
+          for branch in $DEV_BRANCHES; do
+            echo ""
+            echo "📝 Synchronisation de $branch..."
+            
+            if git checkout $branch; then
+              if git merge main --no-edit; then
+                if git push origin $branch; then
+                  echo "✅ $branch synchronisée"
+                  ((SYNC_SUCCESS++))
+                else
+                  echo "❌ Échec push $branch"
+                  ((SYNC_FAILED++))
+                fi
+              else
+                echo "⚠️ Conflits sur $branch - ignorée"
+                git merge --abort
+                ((SYNC_FAILED++))
+              fi
+            else
+              echo "❌ Checkout impossible $branch"
+              ((SYNC_FAILED++))
+            fi
+          done
+          
+          git checkout main
+          
+          echo ""
+          echo "📊 Résumé: ✅ $SYNC_SUCCESS réussies, ❌ $SYNC_FAILED échecs"
+          
+          if [ $SYNC_FAILED -gt 0 ]; then
+            echo "::warning::Certaines branches n'ont pas pu être synchronisées"
+          fi
