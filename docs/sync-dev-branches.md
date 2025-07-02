@@ -9,35 +9,42 @@ The workflow ensures that development branches stay up-to-date with the main bra
 ## Trigger
 
 The workflow runs when:
+
 - A pull request is **closed** (merged) into the `main` branch
 - Only executes if the PR was actually merged (not just closed)
 
 ## Permissions
 
 The workflow requires:
+
 - `contents: write` - To checkout, fetch, and push to branches
 - `pull-requests: write` - To access PR information
 
 ## Workflow Steps
 
 ### 1. Checkout Main Branch
+
 - Checks out the `main` branch with full history (`fetch-depth: 0`)
 - Uses the default `GITHUB_TOKEN` for authentication
 
 ### 2. Configure Git
+
 - Sets up Git user identity for commits:
   - Email: `action@github.com`
   - Name: `GitHub Action`
 
 ### 3. Sync Dev Branches
+
 The main synchronization logic:
 
 #### Branch Discovery
+
 - Fetches all remote branches
 - Identifies all `dev/*` branches using pattern matching
 - Skips if no dev branches exist
 
 #### For Each Dev Branch
+
 1. **Checkout**: Switches to the dev branch
 2. **Update Check**: Compares with `origin/main` to count commits behind
 3. **Skip if Current**: If already up-to-date, increments skip counter
@@ -45,6 +52,7 @@ The main synchronization logic:
 5. **Push**: If merge succeeds, pushes the updated branch
 
 #### Error Handling
+
 - **Checkout Failures**: Logged and counted as failures
 - **Merge Conflicts**: Automatically aborts merge and counts as failure
 - **Push Failures**: Logged and counted as failures
@@ -60,6 +68,7 @@ The workflow uses the following exit strategy:
 ## Output Summary
 
 The workflow provides a detailed summary including:
+
 - Number of branches successfully synchronized
 - Number of branches already up-to-date
 - Number of failed synchronizations
@@ -67,7 +76,8 @@ The workflow provides a detailed summary including:
 
 ## Example Output
 
-```
+``` text
+
 Branches to synchronize: dev/feature-auth dev/api-improvements
 
 Checking dev/feature-auth...
@@ -90,14 +100,16 @@ Global synchronization successful
 ## Branch Naming Convention
 
 This workflow operates on branches following the pattern:
+
 - `dev/*` - Any branch starting with "dev/"
 
 Examples:
-- ✅ `dev/feature-auth`
-- ✅ `dev/bug-fix-123`
-- ✅ `dev/api-v2`
-- ❌ `feature/auth` (doesn't match pattern)
-- ❌ `hotfix/critical` (doesn't match pattern)
+
+- **YES** `dev/feature-auth`
+- **YES** `dev/bug-fix-123`
+- **YES** `dev/api-v2`
+- **NO** `feature/auth` (doesn't match pattern)
+- **NO** `hotfix/critical` (doesn't match pattern)
 
 ## Limitations
 
@@ -111,4 +123,4 @@ Examples:
 1. **Regular Merging**: Encourage frequent integration to minimize conflicts
 2. **Clean Dev Branches**: Remove stale dev branches that are no longer needed
 3. **Monitor Failures**: Check workflow logs for branches that consistently fail to sync
-4. **Branch Hygiene**: Use consistent naming conventions for
+4. **Branch Hygiene**: Use consistent naming conventions for branches
