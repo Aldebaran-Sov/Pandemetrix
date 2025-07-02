@@ -32,35 +32,35 @@ jobs:
           DEV_BRANCHES=$(git branch -r | grep 'origin/dev/' | grep -v HEAD | sed 's/origin\///' | xargs)
           
           if [ -z "$DEV_BRANCHES" ]; then
-            echo "ℹ️ Aucune branche dev/* à synchroniser"
+            echo "Aucune branche dev/* à synchroniser"
             exit 0
           fi
           
-          echo "🔄 Branches à synchroniser: $DEV_BRANCHES"
+          echo "Branches à synchroniser: $DEV_BRANCHES"
           
           SYNC_SUCCESS=0
           SYNC_FAILED=0
           
           for branch in $DEV_BRANCHES; do
             echo ""
-            echo "📝 Synchronisation de $branch..."
+            echo "Synchronisation de $branch..."
             
             if git checkout $branch; then
               if git merge main --no-edit; then
                 if git push origin $branch; then
-                  echo "✅ $branch synchronisée"
+                  echo "$branch synchronisée"
                   ((SYNC_SUCCESS++))
                 else
-                  echo "❌ Échec push $branch"
+                  echo "Échec push $branch"
                   ((SYNC_FAILED++))
                 fi
               else
-                echo "⚠️ Conflits sur $branch - ignorée"
+                echo "Conflits sur $branch - ignorée"
                 git merge --abort
                 ((SYNC_FAILED++))
               fi
             else
-              echo "❌ Checkout impossible $branch"
+              echo "Checkout impossible $branch"
               ((SYNC_FAILED++))
             fi
           done
@@ -68,7 +68,7 @@ jobs:
           git checkout main
           
           echo ""
-          echo "📊 Résumé: ✅ $SYNC_SUCCESS réussies, ❌ $SYNC_FAILED échecs"
+          echo "Résumé: $SYNC_SUCCESS réussies, $SYNC_FAILED échecs"
           
           if [ $SYNC_FAILED -gt 0 ]; then
             echo "::warning::Certaines branches n'ont pas pu être synchronisées"
