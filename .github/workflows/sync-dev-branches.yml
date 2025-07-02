@@ -29,6 +29,9 @@ jobs:
 
       - name: Sync dev branches
         run: |
+          # Pas de set -e global, on gère les erreurs manuellement
+          set +e
+          
           git fetch origin
           
           DEV_BRANCHES=$(git branch -r | grep 'origin/dev/' | grep -v HEAD | sed 's/origin\///' | xargs)
@@ -49,19 +52,19 @@ jobs:
             echo "📝 Vérification de $branch..."
             
             # Checkout de la branche
-            if ! git checkout $branch; then
+            if git checkout $branch; then
+              echo "✅ Checkout $branch réussi"
+            else
               echo "❌ Impossible de checkout $branch"
               ((SYNC_FAILED++))
               continue
             fi
             
-            # Vérifier si la branche est déjà à jour
+            # Fetch de la branche spécifique
             git fetch origin $branch
-            LOCAL_COMMIT=$(git rev-parse HEAD)
-            MAIN_COMMIT=$(git rev-parse origin/main)
             
-            # Vérifier si main a des commits que la branche n'a pas
-            BEHIND_COUNT=$(git rev-list --count HEAD..origin/main)
+            # Vérifier si la branche est déjà à jour
+            BEHIND_COUNT=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo "0")
             
             if [ "$BEHIND_COUNT" -eq 0 ]; then
               echo "✅ $branch déjà à jour (aucun commit à synchroniser)"
@@ -73,40 +76,44 @@ jobs:
             
             # Tentative de merge
             if git merge origin/main --no-edit; then
-              # Vérifier s'il y a quelque chose à pousser
-              if git diff --quiet HEAD origin/$branch; then
-                echo "✅ $branch synchronisée localement (rien à pousser)"
+              echo "✅ Merge réussi pour $branch"
+              
+              # Push
+              if git push origin $branch; then
+                echo "✅ $branch synchronisée et poussée"
                 ((SYNC_SUCCESS++))
               else
-                # Il y a des changements, on pousse
-                if git push origin $branch; then
-                  echo "✅ $branch synchronisée et poussée"
-                  ((SYNC_SUCCESS++))
-                else
-                  echo "❌ Échec du push pour $branch"
-                  ((SYNC_FAILED++))
-                fi
+                echo "❌ Échec du push pour $branch"
+                ((SYNC_FAILED++))
               fi
             else
-              echo "⚠️ Conflits détectés sur $branch - abandonnée"
-              git merge --abort
+              echo "⚠️ Conflits détectés sur $branch - abandon du merge"
+              git merge --abort 2>/dev/null || true
               ((SYNC_FAILED++))
             fi
           done
           
           # Retour sur main
+          echo ""
+          echo "🏠 Retour sur la branche main..."
           git checkout main
           
           echo ""
-          echo "📊 Résumé:"
+          echo "📊 Résumé final:"
           echo "   ✅ Synchronisées: $SYNC_SUCCESS"
           echo "   ⏭️  Déjà à jour: $SYNC_SKIPPED" 
           echo "   ❌ Échecs: $SYNC_FAILED"
           
-          # L'action n'échoue que si toutes les branches ont échoué
-          if [ $SYNC_FAILED -gt 0 ] && [ $((SYNC_SUCCESS + SYNC_SKIPPED)) -eq 0 ]; then
-            echo "::error::Toutes les synchronisations ont échoué"
-            exit 1
+          # L'action réussit si au moins une branche a été traitée avec succès
+          TOTAL_SUCCESS=$((SYNC_SUCCESS + SYNC_SKIPPED))
+          
+          if [ $TOTAL_SUCCESS -gt 0 ]; then
+            echo "🎉 Synchronisation globale réussie"
+            exit 0
           elif [ $SYNC_FAILED -gt 0 ]; then
-            echo "::warning::Certaines branches n'ont pas pu être synchronisées"
+            echo "💥 Toutes les synchronisations ont échoué"
+            exit 1
+          else
+            echo "🤷 Aucune branche traitée"
+            exit 0
           fi
