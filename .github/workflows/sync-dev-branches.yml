@@ -1,5 +1,7 @@
 # Version minimale pour tester
 name: Sync Dev Branches on PR Merge
+permissions:
+  contents: write
 
 on:
   pull_request:
