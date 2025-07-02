@@ -1,0 +1,29 @@
+# Version minimale pour tester
+name: Sync Dev Branches on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  sync-dev-branches:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Test sync
+        run: |
+          git fetch origin
+          echo "Branches dev disponibles:"
+          git branch -r | grep 'origin/dev/' || echo "Aucune branche dev trouvée"
