@@ -1,0 +1,91 @@
+name: Backup to Google Drive
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Rclone
+      run: |
+        curl https://rclone.org/install.sh | sudo bash
+        
+    - name: Configure Rclone
+      run: |
+        mkdir -p ~/.config/rclone
+        echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+        
+    - name: Create archive
+      run: |
+        # Extraction du nom du tag
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+        else
+          TAG_NAME="latest"
+        fi
+        
+        DATE=$(date +%Y-%m-%d)
+        REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        ARCHIVE_NAME="${REPO_NAME}-${TAG_NAME}-${DATE}.zip"
+        
+        # Création de l'archive en excluant les fichiers non essentiels
+        zip -r "$ARCHIVE_NAME" . \
+          -x "*.git*" \
+          -x "node_modules/*" \
+          -x "*.env*" \
+          -x "*.log" \
+          -x "dist/*" \
+          -x "build/*" \
+          -x "__pycache__/*" \
+          -x "*.pyc"
+        
+        echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
+        echo "Created archive: $ARCHIVE_NAME"
+        
+    - name: Upload to Google Drive
+      run: |
+        BACKUP_PATH="backups/github-repos/${{ github.repository }}"
+        
+        # Créer le dossier s'il n'existe pas
+        rclone mkdir "gdrive:$BACKUP_PATH"
+        
+        # Upload de l'archive
+        rclone copy "$ARCHIVE_NAME" "gdrive:$BACKUP_PATH" -v
+        
+        echo "Uploaded to: $BACKUP_PATH/$ARCHIVE_NAME"
+        
+    - name: Cleanup old backups (keep last 3)
+      run: |
+        BACKUP_PATH="backups/github-repos/${{ github.repository }}"
+        REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        
+        # Lister les fichiers et garder les 3 derniers
+        rclone ls "gdrive:$BACKUP_PATH" | grep "$REPO_NAME-" | sort -k2 -r | tail -n +4 | while read size filename; do
+          echo "Deleting old backup: $filename"
+          rclone delete "gdrive:$BACKUP_PATH/$filename"
+        done
+        
+    - name: Verify upload
+      run: |
+        BACKUP_PATH="backups/github-repos/${{ github.repository }}"
+        echo "Current backups:"
+        rclone ls "gdrive:$BACKUP_PATH" | grep "${{ github.repository##*/ }}-"
+        
+        # Vérifier que notre fichier existe
+        if rclone ls "gdrive:$BACKUP_PATH" | grep -q "$ARCHIVE_NAME"; then
+          echo "Backup successfully uploaded!"
+        else
+          echo "Backup upload failed!"
+          exit 1
+        fi
