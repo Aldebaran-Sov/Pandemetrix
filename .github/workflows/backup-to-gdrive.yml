@@ -23,8 +23,11 @@ jobs:
         
     - name: Configure Rclone
       run: |
+        CONFIG_PATH=$(rclone config file)
+        echo "Config will be saved to: $CONFIG_PATH"
+        mkdir -p "$(dirname "$CONFIG_PATH")"
         # Décode la config base64
-        echo "${{ secrets.RCLONE_CONFIG }}" | base64 -d > $(rclone config file)
+        echo "${{ secrets.RCLONE_CONFIG }}" | base64 -d > "$CONFIG_PATH"
         
         # Vérification que la config est lisible
         echo "Testing rclone configuration..."
