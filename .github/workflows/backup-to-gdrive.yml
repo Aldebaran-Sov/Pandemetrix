@@ -51,6 +51,7 @@ jobs:
           -x "*.pyc"
         
         echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
+        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
         echo "Created archive: $ARCHIVE_NAME"
         
     - name: Upload to Google Drive
@@ -68,7 +69,6 @@ jobs:
     - name: Cleanup old backups (keep last 3)
       run: |
         BACKUP_PATH="backups/github-repos/${{ github.repository }}"
-        REPO_NAME="${GITHUB_REPOSITORY##*/}"
         
         # Lister les fichiers et garder les 3 derniers
         rclone ls "gdrive:$BACKUP_PATH" | grep "$REPO_NAME-" | sort -k2 -r | tail -n +4 | while read size filename; do
@@ -80,7 +80,7 @@ jobs:
       run: |
         BACKUP_PATH="backups/github-repos/${{ github.repository }}"
         echo "Current backups:"
-        rclone ls "gdrive:$BACKUP_PATH" | grep "${{ github.repository##*/ }}-"
+        rclone ls "gdrive:$BACKUP_PATH" | grep "$REPO_NAME-"
         
         # Vérifier que notre fichier existe
         if rclone ls "gdrive:$BACKUP_PATH" | grep -q "$ARCHIVE_NAME"; then
