@@ -24,7 +24,17 @@ jobs:
     - name: Configure Rclone
       run: |
         mkdir -p ~/.config/rclone
-        echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+        # Décode la config base64
+        echo "${{ secrets.RCLONE_CONFIG }}" | base64 -d > ~/.config/rclone/rclone.conf
+        
+        # Vérification que la config est lisible
+        echo "Testing rclone configuration..."
+        if rclone config show gdrive > /dev/null 2>&1; then
+          echo "Rclone config is valid"
+        else
+          echo "Rclone config is invalid"
+          exit 1
+        fi
         
     - name: Create archive
       run: |
