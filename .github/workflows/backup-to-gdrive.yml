@@ -23,9 +23,8 @@ jobs:
         
     - name: Configure Rclone
       run: |
-        mkdir -p ~/.config/rclone
         # Décode la config base64
-        echo "${{ secrets.RCLONE_CONFIG }}" | base64 -d > ~/.config/rclone/rclone.conf
+        echo "${{ secrets.RCLONE_CONFIG }}" | base64 -d > $(rclone config file)
         
         # Vérification que la config est lisible
         echo "Testing rclone configuration..."
