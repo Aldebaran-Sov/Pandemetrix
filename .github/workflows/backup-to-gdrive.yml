@@ -23,7 +23,8 @@ jobs:
         
     - name: Configure Rclone
       run: |
-        CONFIG_PATH=root/.config/rclone/rclone.conf
+        CONFIG_PATH=/root/.config/rclone/rclone.conf
+        touch /root/.config/rclone/rclone.conf
         echo "Config will be saved to: $CONFIG_PATH"
         # Décode la config base64
         echo "${{ secrets.RCLONE_CONFIG }}" | base64 -d > "$CONFIG_PATH"
