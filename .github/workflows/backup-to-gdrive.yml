@@ -9,7 +9,7 @@ on:
 
 jobs:
   backup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     
     steps:
     - name: Checkout code
@@ -23,7 +23,7 @@ jobs:
         
     - name: Configure Rclone
       run: |
-        CONFIG_PATH=$(rclone config file)
+        CONFIG_PATH=/root/.config/rclone/rclone.conf
         echo "Config will be saved to: $CONFIG_PATH"
         mkdir -p "$(dirname "$CONFIG_PATH")"
         # Décode la config base64
